@@ -75,6 +75,16 @@ void Patterns()
 	CHECK(found.size() == 2 && found[0] == 1);
 	CHECK(sf::FindPattern(code, 3, *pattern).empty()); // buffer shorter than the pattern
 	CHECK(sf::FindPattern(nullptr, 10, *pattern).empty());
+
+	// A function another plugin hooked: KHook's jump replaced the first 6 bytes (seen live on CBeam::SetBeamOrigin).
+	const auto beam = sf::ParsePattern("55 48 89 E5 41 54 49 89 F4 53 48 89 FB 48 83 EC ? 0F 1F 80");
+	const std::uint8_t hooked[] = {0xE9, 0x00, 0x97, 0x77, 0xFE, 0x90, 0x49, 0x89, 0xF4, 0x53, 0x48, 0x89, 0xFB,
+		0x48, 0x83, 0xEC, 0x10, 0x0F, 0x1F, 0x80, 0x00};
+	CHECK(sf::FindPattern(hooked, sizeof(hooked), *beam).empty());
+	const auto behind = sf::BehindHookJump(*beam);
+	CHECK(behind && sf::FindPattern(hooked, sizeof(hooked), *behind).size() == 1);
+	CHECK(!sf::BehindHookJump(*sf::ParsePattern("48 8D 35 ? ? ? ? 89 C2 48 63 46"))); // too little left to be safe
+	CHECK(!sf::BehindHookJump(*sf::ParsePattern("75 ? 48 8B 03")));
 }
 
 void Players()

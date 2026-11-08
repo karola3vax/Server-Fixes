@@ -42,11 +42,16 @@ public:
 
 	bool Load(const FixContext &context, std::string &error) override
 	{
-		return Offset(context.schema, "CCSGameRulesProxy", "m_pGameRules", rules_, error)
-			&& Offset(context.schema, "CCSGameRules", "m_iMaxNumTerrorists", max_t_, error)
-			&& Offset(context.schema, "CCSGameRules", "m_iMaxNumCTs", max_ct_, error)
-			&& Offset(context.schema, "CCSGameRules", "m_iSpawnPointCount_Terrorist", spawns_t_, error)
-			&& Offset(context.schema, "CCSGameRules", "m_iSpawnPointCount_CT", spawns_ct_, error);
+		if (!Offset(context.schema, "CCSGameRulesProxy", "m_pGameRules", rules_, error)
+			|| !Offset(context.schema, "CCSGameRules", "m_iMaxNumTerrorists", max_t_, error)
+			|| !Offset(context.schema, "CCSGameRules", "m_iMaxNumCTs", max_ct_, error)
+			|| !Offset(context.schema, "CCSGameRules", "m_iSpawnPointCount_Terrorist", spawns_t_, error)
+			|| !Offset(context.schema, "CCSGameRules", "m_iSpawnPointCount_CT", spawns_ct_, error))
+			return false;
+		// maxplayers comes from CGlobalVars; GameFixes' build read it as 0, so its value is in the log.
+		CGlobalVars *globals = g_pEngineServer->GetServerGlobals();
+		Log("raising the team caps to maxplayers (%d now)", globals ? globals->maxClients : -1);
+		return true;
 	}
 
 	void Unload() override { game_rules_ = nullptr; }

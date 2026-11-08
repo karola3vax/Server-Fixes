@@ -63,7 +63,32 @@ bool Module::Load(const void *address, std::string &error)
 	return true;
 }
 
+std::vector<std::uintptr_t> Module::Scan(const Pattern &bytes) const
+{
+	std::vector<std::uintptr_t> found;
+	for (const Range &range : ranges_)
+	{
+		if (!range.code)
+			continue;
+		for (std::size_t offset : FindPattern(reinterpret_cast<const std::uint8_t *>(range.start), range.end - range.start, bytes, 2))
+			found.push_back(range.start + offset);
+		if (found.size() > 1)
+			break;
+	}
+	return found;
+}
+
 std::uintptr_t Module::FindUnique(const char *signature, std::string &error) const
+{
+	return Find(signature, false, error);
+}
+
+std::uintptr_t Module::FindFunction(const char *signature, std::string &error) const
+{
+	return Find(signature, true, error);
+}
+
+std::uintptr_t Module::Find(const char *signature, bool function, std::string &error) const
 {
 	const auto pattern = ParsePattern(signature);
 	if (!pattern)
@@ -71,16 +96,11 @@ std::uintptr_t Module::FindUnique(const char *signature, std::string &error) con
 		error = "bad signature";
 		return 0;
 	}
-	std::vector<std::uintptr_t> found;
-	for (const Range &range : ranges_)
-	{
-		if (!range.code)
-			continue;
-		for (std::size_t offset : FindPattern(reinterpret_cast<const std::uint8_t *>(range.start), range.end - range.start, *pattern, 2))
-			found.push_back(range.start + offset);
-		if (found.size() > 1)
-			break;
-	}
+	std::vector<std::uintptr_t> found = Scan(*pattern);
+	// Another plugin may already hook the function (its jump replaced the first bytes). Still only one match.
+	if (function && found.empty())
+		if (const auto hooked = BehindHookJump(*pattern))
+			found = Scan(*hooked);
 	if (found.size() != 1)
 	{
 		error = found.empty() ? "signature not found in " + name_ : "signature matches more than once in " + name_;

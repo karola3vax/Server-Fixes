@@ -40,6 +40,26 @@ std::optional<Pattern> ParsePattern(std::string_view text)
 	return pattern;
 }
 
+std::optional<Pattern> BehindHookJump(const Pattern &pattern)
+{
+	constexpr std::size_t kJumpBytes = 6;
+	constexpr std::size_t kMinConcrete = 8;
+	if (pattern.size() <= kJumpBytes)
+		return std::nullopt;
+	Pattern hooked = pattern;
+	std::size_t concrete = 0;
+	for (std::size_t i = 0; i < hooked.size(); ++i)
+	{
+		if (i < kJumpBytes)
+			hooked[i] = -1;
+		else if (hooked[i] >= 0)
+			++concrete;
+	}
+	if (concrete < kMinConcrete)
+		return std::nullopt;
+	return hooked;
+}
+
 std::vector<std::size_t> FindPattern(const std::uint8_t *data, std::size_t size, const Pattern &pattern, std::size_t limit)
 {
 	std::vector<std::size_t> found;

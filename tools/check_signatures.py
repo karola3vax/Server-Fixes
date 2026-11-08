@@ -13,7 +13,7 @@ SIGNATURES = pathlib.Path(__file__).resolve().parent.parent / "src" / "signature
 
 def signatures():
     text = SIGNATURES.read_text(encoding="utf-8")
-    return re.findall(r'constexpr const char \*(kSig\w+) = "([^"]+)";', text)
+    return re.findall(r'constexpr const char \*(k(?:Sig|Fn)\w+) = "([^"]+)";', text)
 
 
 def code_segments(data):
@@ -35,6 +35,22 @@ def to_regex(signature):
     return re.compile(b"".join(parts), re.DOTALL)
 
 
+def behind_hook_jump(signature):
+    """Mirrors sf::BehindHookJump: the first 6 bytes as wildcards, or None with fewer than 8 concrete bytes left."""
+    tokens = signature.split()
+    if len(tokens) <= 6:
+        return None
+    rest = tokens[6:]
+    if sum(token not in ("?", "??") for token in rest) < 8:
+        return None
+    return " ".join(["?"] * 6 + rest)
+
+
+def count(data, segments, signature):
+    regex = to_regex(signature)
+    return sum(sum(1 for _ in regex.finditer(data, offset, offset + size)) for offset, size in segments)
+
+
 def main():
     if len(sys.argv) != 2:
         sys.exit(__doc__)
@@ -42,13 +58,14 @@ def main():
     segments = code_segments(data)
     failed = 0
     for name, signature in signatures():
-        regex = to_regex(signature)
-        hits = 0
-        for offset, size in segments:
-            hits += sum(1 for _ in regex.finditer(data, offset, offset + size))
-        status = "ok" if hits == 1 else "FAIL"
-        failed += hits != 1
-        print(f"{status:4} {name}: {hits} match{'es' if hits != 1 else ''}")
+        hits = count(data, segments, signature)
+        # The plugin falls back to this when another hook's jump replaced the first bytes; it must be unique too.
+        hooked = behind_hook_jump(signature) if name.startswith("kFn") else None
+        hooked_hits = count(data, segments, hooked) if hooked else None
+        ok = hits == 1 and hooked_hits in (None, 1)
+        failed += not ok
+        fallback = "" if hooked_hits is None else f", behind a hook jump {hooked_hits}"
+        print(f"{'ok' if ok else 'FAIL':4} {name}: {hits} match{'es' if hits != 1 else ''}{fallback}")
     print(f"{len(signatures()) - failed} of {len(signatures())} signatures match once")
     return 1 if failed else 0
 

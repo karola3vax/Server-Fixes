@@ -38,8 +38,8 @@ public:
 			|| !Offset(context.schema, "CGameSceneNode", "m_vecAbsOrigin", abs_origin_, error)
 			|| !Offset(context.schema, "CBeam", "m_vecEndPos", end_pos_, error))
 			return false;
-		const auto origin = context.server.FindUnique(sig::kSigBeamSetOrigin, error);
-		const auto end = origin ? context.server.FindUnique(sig::kSigBeamSetEndPos, error) : 0;
+		const auto origin = context.server.FindFunction(sig::kFnBeamSetOrigin, error);
+		const auto end = origin ? context.server.FindFunction(sig::kFnBeamSetEndPos, error) : 0;
 		if (!origin || !end)
 		{
 			error = "CBeam::SetBeamOrigin / SetBeamEndPos: " + error;
@@ -111,7 +111,7 @@ public:
 
 	bool Load(const FixContext &context, std::string &error) override
 	{
-		const auto accept = context.server.FindUnique(sig::kSigAcceptInput, error);
+		const auto accept = context.server.FindFunction(sig::kFnAcceptInput, error);
 		if (!accept)
 		{
 			error = "CEntityIdentity::AcceptInput: " + error;

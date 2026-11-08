@@ -22,6 +22,8 @@ public:
 
 	// The one match of `signature` in the code, or 0 with `error` set (none found, or more than one).
 	std::uintptr_t FindUnique(const char *signature, std::string &error) const;
+	// The same for the start of a function, which may also be found behind another hook's jump.
+	std::uintptr_t FindFunction(const char *signature, std::string &error) const;
 
 	// The vtable of class `name` (address point, the first virtual function slot), or 0 with `error` set.
 	// Itanium ABI: the typeinfo name string, the typeinfo object pointing at it, and the one primary
@@ -36,6 +38,8 @@ private:
 		bool code;
 	};
 
+	std::uintptr_t Find(const char *signature, bool function, std::string &error) const;
+	std::vector<std::uintptr_t> Scan(const Pattern &bytes) const;
 	std::vector<std::uintptr_t> FindQwords(std::uintptr_t value, std::size_t limit) const;
 
 	std::string name_;

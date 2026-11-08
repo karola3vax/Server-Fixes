@@ -50,7 +50,7 @@ public:
 		clear_after_pass_ = GetBool(context.options, "clear_after_pass", true);
 
 		const auto reference = context.server.FindUnique(sig::kSigGcBanMapRef, error);
-		const auto pass = reference ? context.server.FindUnique(sig::kSigCheckSteamBan, error) : 0;
+		const auto pass = reference ? context.server.FindFunction(sig::kFnCheckSteamBan, error) : 0;
 		if (!reference || !pass)
 		{
 			error = (reference ? "GameSystem_Think_CheckSteamBan: " : "sm_mapGcBanInformation: ") + error;
