@@ -3,9 +3,11 @@
 #include "core/config.h"
 #include "core/pattern.h"
 #include "core/rules.h"
+#include "core/vtable.h"
 
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <string>
 
 namespace
@@ -156,6 +158,53 @@ void Voice()
 	CHECK(!packets.Take(start, 10, 100));                                 // 1024 packets per second
 }
 
+// A fake data segment laid out like libserver.so's: name strings, typeinfo { vptr, name }, and vtables
+// { offset-to-top, typeinfo, functions }.
+void VTables()
+{
+	alignas(8) static unsigned char memory[512] = {};
+	const auto base = reinterpret_cast<std::uintptr_t>(memory);
+	auto put = [&](std::size_t at, std::uintptr_t value) { std::memcpy(memory + at, &value, 8); };
+	std::memcpy(memory + 1, "13Foo", 6);  // another class whose name ends in "3Foo"
+	std::memcpy(memory + 8, "3Foo", 5);   // Foo's typeinfo name, at base + 8
+	std::memcpy(memory + 16, "3Bar", 5);  // Bar's, at base + 16
+	put(64, 0x1111);                      // Foo's typeinfo at base + 64: vptr, name
+	put(72, base + 8);
+	put(96, 0x1111);                      // Bar's typeinfo at base + 96
+	put(104, base + 16);
+	put(128, 0);                          // Foo's primary vtable: offset-to-top 0, typeinfo, function
+	put(136, base + 64);
+	put(144, 0xF00);
+	put(160, static_cast<std::uintptr_t>(-8)); // Foo's secondary vtable (second base): offset-to-top -8
+	put(168, base + 64);
+	put(176, 0xF01);
+	put(200, 0);                          // Bar's primary vtable
+	put(208, base + 96);
+	put(216, 0xBA0);
+	const std::vector<sf::DataSpan> all{{base, base + sizeof(memory)}};
+
+	const auto foo = sf::FindVTables(all, "Foo");
+	CHECK(foo.size() == 1 && foo[0] == base + 144);       // the primary one only; "13Foo" is not Foo
+	const auto bar = sf::FindVTables(all, "Bar");
+	CHECK(bar.size() == 1 && bar[0] == base + 216);
+	CHECK(sf::FindVTables(all, "Baz").empty());
+	CHECK(sf::FindVTables(all, "Fo").empty());           // "2Fo" is nowhere
+
+	put(256, 0);                                         // a second primary vtable for Foo: ambiguous
+	put(264, base + 64);
+	CHECK(sf::FindVTables(all, "Foo").size() == 2);
+	put(256, 1);
+	put(264, 0);
+
+	// Bar's vtable starting a span: its offset-to-top lies outside every span and is not read.
+	const std::vector<sf::DataSpan> split{{base, base + 112}, {base + 208, base + sizeof(memory)}};
+	CHECK(sf::FindVTables(split, "Bar").empty());
+	// Split across two spans, the strings and typeinfo in one and the vtable in the other.
+	const std::vector<sf::DataSpan> two{{base, base + 112}, {base + 192, base + sizeof(memory)}};
+	const auto bar_two = sf::FindVTables(two, "Bar");
+	CHECK(bar_two.size() == 1 && bar_two[0] == base + 216);
+}
+
 } // namespace
 
 int main()
@@ -166,6 +215,7 @@ int main()
 	Accounts();
 	TeamLimit();
 	Voice();
+	VTables();
 	std::printf("%d checks, %d failed\n", g_checks, g_failures);
 	return g_failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

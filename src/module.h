@@ -40,7 +40,6 @@ private:
 
 	std::uintptr_t Find(const char *signature, bool function, std::string &error) const;
 	std::vector<std::uintptr_t> Scan(const Pattern &bytes) const;
-	std::vector<std::uintptr_t> FindQwords(std::uintptr_t value, std::size_t limit) const;
 
 	std::string name_;
 	std::vector<Range> ranges_;

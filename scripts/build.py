@@ -23,7 +23,7 @@ def run(*args: str, cwd: Path = ROOT, env: dict[str, str] | None = None) -> None
 def gate_tests(build: Path) -> None:
   """src/core has no SDK dependency; its tests build with the plain compiler and must pass first."""
   binary = build / "test_core"
-  sources = ["tests/test_core.cpp", "src/core/config.cpp", "src/core/pattern.cpp", "src/core/rules.cpp"]
+  sources = ["tests/test_core.cpp", "src/core/config.cpp", "src/core/pattern.cpp", "src/core/rules.cpp", "src/core/vtable.cpp"]
   run("g++", "-std=c++20", "-O1", "-Wall", "-Wextra", "-Werror", "-Isrc", *sources, "-o", str(binary))
   run(str(binary))
 

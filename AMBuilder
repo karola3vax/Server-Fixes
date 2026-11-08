@@ -7,6 +7,8 @@ root = builder.sourcePath
 sdk = config.sdk_target.sdk
 with open(os.path.join(root, 'VERSION'), encoding='utf-8') as version_file:
   version = version_file.read().strip()
+# A changed VERSION reconfigures the build; otherwise the old version stays compiled in.
+builder.AddConfigureFile('VERSION')
 
 plugin = config.cxx.Library('server_fixes')
 compiler = plugin.compiler
@@ -45,10 +47,10 @@ compiler.defines += ['META_IS_SOURCE2', 'SERVER_FIXES_VERSION="{}"'.format(versi
 config.SdkHelpers.configureCxx(builder, plugin, sdk)
 plugin.sources += [os.path.join(root, 'src', path) for path in [
   'plugin.cpp', 'module.cpp',
-  'core/config.cpp', 'core/pattern.cpp', 'core/rules.cpp',
+  'core/config.cpp', 'core/pattern.cpp', 'core/rules.cpp', 'core/vtable.cpp',
   'fixes/players.cpp', 'fixes/slow_animation.cpp', 'fixes/crashes.cpp', 'fixes/game.cpp',
   'fixes/network.cpp', 'fixes/steam_ban.cpp', 'fixes/entities.cpp',
-  'fixes/rampbug.cpp',
+  'fixes/rampbug.cpp', 'fixes/nav.cpp',
 ]]
 plugin.sources += [
   os.path.join(sdk['path'], 'tier0_perproject', 'convar.cpp'),

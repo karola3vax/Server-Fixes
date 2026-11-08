@@ -1,5 +1,7 @@
 #include "module.h"
 
+#include "core/vtable.h"
+
 #include <dlfcn.h>
 #include <link.h>
 #include <sys/mman.h>
@@ -109,59 +111,13 @@ std::uintptr_t Module::Find(const char *signature, bool function, std::string &e
 	return found[0];
 }
 
-std::vector<std::uintptr_t> Module::FindQwords(std::uintptr_t value, std::size_t limit) const
-{
-	std::vector<std::uintptr_t> found;
-	for (const Range &range : ranges_)
-	{
-		if (range.code)
-			continue;
-		const std::uintptr_t start = (range.start + 7) & ~std::uintptr_t(7);
-		for (std::uintptr_t at = start; at + 8 <= range.end; at += 8)
-		{
-			if (*reinterpret_cast<const std::uintptr_t *>(at) != value)
-				continue;
-			found.push_back(at);
-			if (found.size() >= limit)
-				return found;
-		}
-	}
-	return found;
-}
-
 std::uintptr_t Module::FindVTable(const char *name, std::string &error) const
 {
-	// The typeinfo name of class Foo is the C string "3Foo".
-	const std::string mangled = std::to_string(std::strlen(name)) + name;
-	std::vector<std::uintptr_t> names;
+	std::vector<DataSpan> data;
 	for (const Range &range : ranges_)
-	{
-		if (range.code)
-			continue;
-		const auto *data = reinterpret_cast<const char *>(range.start);
-		const std::size_t size = range.end - range.start;
-		std::size_t at = 1;
-		while (at + mangled.size() < size)
-		{
-			const void *hit = std::memchr(data + at, mangled[0], size - mangled.size() - at);
-			if (!hit)
-				break;
-			at = static_cast<const char *>(hit) - data;
-			// A whole string: starts after a terminator and ends with one.
-			if (data[at - 1] == '\0' && data[at + mangled.size()] == '\0' && std::memcmp(data + at, mangled.data(), mangled.size()) == 0)
-				names.push_back(range.start + at);
-			++at;
-		}
-	}
-	std::vector<std::uintptr_t> vtables;
-	for (std::uintptr_t text : names)
-		for (std::uintptr_t name_slot : FindQwords(text, 8))
-		{
-			const std::uintptr_t typeinfo = name_slot - 8; // { vptr, name }
-			for (std::uintptr_t slot : FindQwords(typeinfo, 16))
-				if (*reinterpret_cast<const std::intptr_t *>(slot - 8) == 0) // offset-to-top: the primary vtable
-					vtables.push_back(slot + 8);
-		}
+		if (!range.code)
+			data.push_back({range.start, range.end});
+	const std::vector<std::uintptr_t> vtables = FindVTables(data, name);
 	if (vtables.size() != 1)
 	{
 		error = std::string(vtables.empty() ? "no vtable for " : "more than one vtable for ") + name + " in " + name_;

@@ -18,6 +18,9 @@ constexpr const char *kFnBeamSetEndPos = "55 48 89 E5 41 57 41 56 41 55 41 54 49
 constexpr const char *kFnAcceptInput = "55 48 89 E5 41 57 41 56 4C 8D BD ? ? ? ? 4D 89 CE";
 // The jnz in SetSchemaHammerUniqueId that skips writing m_sUniqueHammerID; the match starts on it.
 constexpr const char *kSigHammerIdJnz = "75 ? 48 8B 03 48 89 DF FF 90 ? ? ? ? 84 C0 74 ? 48 8D 05";
+// The same place once hammer_id has made the jnz a jmp. Not a "kSig": tools/check_signatures.py reads the
+// file on disk, where it is never patched.
+constexpr const char *kPatchedHammerIdJmp = "EB ? 48 8B 03 48 89 DF FF 90 ? ? ? ? 84 C0 74 ? 48 8D 05";
 // lea rsi, [rip + CCSGameRules::sm_mapGcBanInformation]
 constexpr const char *kSigGcBanMapRef = "48 8D 35 ? ? ? ? 89 C2 48 63 46";
 // void GameSystem_Think_CheckSteamBan()
@@ -32,5 +35,31 @@ constexpr const char *kFnCategorizePosition = "48 B8 ? ? ? ? ? ? ? ? 55 66 0F EF
 constexpr const char *kFnProcessMovement = "55 48 89 E5 41 57 41 56 41 55 49 89 F5 41 54 53 48 89 FB 48 83 EC ? 48 8B 7F ? 48 85 FF 0F 84 ? ? ? ? 8B 8F ? ? ? ? 83 F9 FF";
 // void CCSPlayer_MovementServices::TryPlayerMove(CMoveData *, Vector *first_dest, trace_t *first_trace, bool *is_surfing)
 constexpr const char *kFnTryPlayerMove = "48 B8 ? ? ? ? ? ? ? ? 55 66 0F EF C0 48 89 E5 41 57 41 56 49 89 F6 41 55 49 89 D5 41 54 4D 89 C4 53 48 89 FB 48 81 EC ? ? ? ?";
+// void *CNavMesh::GetNearestNavArea(...); from CS2Fixes' gamedata, made longer to stay unique behind a hook jump
+constexpr const char *kFnGetNearestNavArea = "55 48 89 E5 41 57 49 89 FF 41 56 41 89 CE 41 55 41 54 53 48 81 EC ? ? ? ? 48 8D 05 ? ? ? ? 4C 89 85 ? ? ? ? 45 31 C0";
+
+struct Signature
+{
+	const char *name;
+	const char *bytes;
+	bool function;                 // may be found behind another hook's jump
+	const char *patched = nullptr; // what it looks like after a fix of ours has patched it in place
+};
+
+// Every signature above, for the check the plugin logs at load and server_fixes_status prints.
+inline constexpr Signature kAll[] = {
+	{"CBeam::SetBeamOrigin", kFnBeamSetOrigin, true},
+	{"CBeam::SetBeamEndPos", kFnBeamSetEndPos, true},
+	{"CEntityIdentity::AcceptInput", kFnAcceptInput, true},
+	{"SetSchemaHammerUniqueId (jnz)", kSigHammerIdJnz, false, kPatchedHammerIdJmp},
+	{"sm_mapGcBanInformation (lea)", kSigGcBanMapRef, false},
+	{"GameSystem_Think_CheckSteamBan", kFnCheckSteamBan, true},
+	{"CEntitySystem::CreateEntityFromKeyValues", kFnCreateEntityFromKeyValues, true},
+	{"CCSPlayer_MovementServices::WaterMove", kFnWaterMove, true},
+	{"CCSPlayer_MovementServices::CategorizePosition", kFnCategorizePosition, true},
+	{"CCSPlayer_MovementServices::ProcessMovement", kFnProcessMovement, true},
+	{"CCSPlayer_MovementServices::TryPlayerMove", kFnTryPlayerMove, true},
+	{"CNavMesh::GetNearestNavArea", kFnGetNearestNavArea, true},
+};
 
 } // namespace sf::sig

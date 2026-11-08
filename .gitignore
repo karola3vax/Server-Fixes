@@ -7,3 +7,4 @@
 *.suo
 *.pdb
 *.obj
+/release/
