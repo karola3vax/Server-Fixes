@@ -1,0 +1,5 @@
+"Metamod Plugin"
+{
+	"alias"	"server_fixes"
+	"file"	"addons/server_fixes/bin/server_fixes"
+}

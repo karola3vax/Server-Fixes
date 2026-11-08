@@ -1,0 +1,9 @@
+/.build-deps/
+/build/
+/build-linux/
+/dist/
+/.vs/
+*.user
+*.suo
+*.pdb
+*.obj

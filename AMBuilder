@@ -1,0 +1,60 @@
+# Defines the server_fixes Metamod plugin build (Linux). AMBuild supplies the compiler; the SDK, Metamod and
+# KHook come from the pinned checkouts in build-dependencies.json.
+
+import os
+
+root = builder.sourcePath
+sdk = config.sdk_target.sdk
+with open(os.path.join(root, 'VERSION'), encoding='utf-8') as version_file:
+  version = version_file.read().strip()
+
+plugin = config.cxx.Library('server_fixes')
+compiler = plugin.compiler
+# The client and voice messages the network fixes read are generated protobuf code.
+protos = ['valveextensions.proto', 'network_connection.proto', 'networkbasetypes.proto', 'netmessages.proto',
+  'source2_steam_stats.proto']
+protobuf = builder.tools.Protoc(protoc=config.sdk_target.protoc, sources=[
+  os.path.join(sdk['path'], 'common', proto) for proto in protos
+])
+protobuf.protoc.includes += [
+  os.path.join(sdk['path'], 'thirdparty', 'protobuf-3.21.8', 'src'),
+  os.path.join(sdk['path'], 'common'),
+]
+plugin.custom = [protobuf]
+compiler.cxxincludes += [
+  os.path.join(root, 'src'),
+  os.path.join(config.mms_root, 'core'),
+  os.path.join(config.mms_root, 'third_party', 'khook', 'include'),
+  os.path.join(builder.buildPath, 'server_fixes', '{}-{}'.format(compiler.target.platform, compiler.target.arch)),
+]
+compiler.cflags += ['-Wall', '-Wextra', '-pthread', '-msse4.1', '-fno-strict-aliasing', '-fPIC',
+  '-fvisibility=hidden', '-fstack-protector-strong', '-O2']
+# Without -fno-gnu-unique glibc never unloads the library, so `meta unload` + `meta load` would keep the old build.
+compiler.cxxflags += ['-std=c++20', '-fvisibility-inlines-hidden', '-fno-gnu-unique']
+# --exclude-libs keeps the static protobuf's symbols out of our exports, so they can't clash with the game's or
+# another plugin's protobuf.
+compiler.linkflags += ['-pthread', '-ldl', '-Wl,--exclude-libs,ALL',
+  os.path.join(sdk['path'], 'lib', 'linux64', 'release', 'libprotobuf.a')]
+compiler.defines += ['stricmp=strcasecmp', '_stricmp=strcasecmp', '_snprintf=snprintf',
+  '_vsnprintf=vsnprintf', 'HAVE_STDINT_H', 'GNUC']
+compiler.symbol_files_ = None
+compiler.defines += ['DEBUG', '_DEBUG'] if builder.options.debug else ['NDEBUG']
+for manifest in config.sdk_manifests:
+  compiler.defines += ['SE_{}={}'.format(manifest['define'], manifest['code'])]
+compiler.defines += ['META_IS_SOURCE2', 'SERVER_FIXES_VERSION="{}"'.format(version)]
+config.SdkHelpers.configureCxx(builder, plugin, sdk)
+plugin.sources += [os.path.join(root, 'src', path) for path in [
+  'plugin.cpp', 'module.cpp',
+  'core/config.cpp', 'core/pattern.cpp', 'core/rules.cpp',
+  'fixes/players.cpp', 'fixes/slow_animation.cpp', 'fixes/crashes.cpp', 'fixes/game.cpp',
+  'fixes/network.cpp', 'fixes/steam_ban.cpp',
+]]
+plugin.sources += [
+  os.path.join(sdk['path'], 'tier0_perproject', 'convar.cpp'),
+  os.path.join(sdk['path'], 'entity2', 'entitysystem.cpp'),
+  os.path.join(sdk['path'], 'entity2', 'entityidentity.cpp'),
+  os.path.join(sdk['path'], 'public', 'tier0', 'memoverride.cpp'),
+  # Metamod resolves the plugin factory with dlsym; pull the SDK's interfaces in explicitly.
+  os.path.join(sdk['path'], 'interfaces', 'interfaces.cpp'),
+]
+builder.Add(plugin)
