@@ -1,6 +1,6 @@
 # Server Fixes
 
-Metamod plugin for Linux CS2 servers. It fixes problems the game leaves open. Each fix is switched on or off in `server_fixes.cfg`.
+Metamod plugin for Linux CS2 servers. It fixes problems the game leaves open, 13 in all. Each fix is switched on or off in `server_fixes.cfg`.
 
 | Fix | What it does |
 | --- | --- |
@@ -14,6 +14,9 @@ Metamod plugin for Linux CS2 servers. It fixes problems the game leaves open. Ea
 | `voice_flood` | Malformed or oversized voice messages are dropped, and each player gets 192 messages, 256 KiB and 1024 packets of voice per second. Nobody is kicked |
 | `demo_record` | With `tv_enable 1`, GOTV stays connected and gets its own slot, so a demo keeps recording across match restarts |
 | `hammer_id` | Every entity gets its Hammer id (`m_sUniqueHammerID`) |
+| `abstract_entity` | A map entity whose class the game cannot construct (`weapon_cs_base` in old map ports) would crash the server on spawn. It is not created, like an unknown classname |
+| `water_jump` | Touching the bottom of water no longer stops the jump out of it |
+| `rampbug` | Surf and kz ramps: lessens getting stuck on or flung off a ramp, and landing on a slope keeps its speed. Off by default: it adds traces to every player's movement and only helps on surf or kz maps |
 
 `slow_animation` must find the server empty in two independent ways before it reloads: the engine's authenticated Steam accounts, and the connected human player controllers. If it cannot count, it does not reload. GameFixes_mm, which this plugin replaces, reloaded the map under players because one of its counts read 0.
 
@@ -36,7 +39,7 @@ A fix that cannot find its function or field after a CS2 update stays off with a
 powershell.exe -ExecutionPolicy Bypass -File scripts/build-steamrt3.ps1
 ```
 
-The build runs in Docker with Valve's SteamRT3 image, so the plugin runs on the same glibc as CS2. It first builds and runs the gate tests (`tests/test_core.cpp`: config parsing, signature scanning, the player count, the steam_ban whitelist, team limits and the voice limits), then the plugin. The result lands in `dist/addons`. Dependencies are pinned to exact commits in `build-dependencies.json`.
+The build runs in Docker with Valve's SteamRT3 image, so the plugin runs on the same glibc as CS2. It first builds and runs the gate tests (`tests/test_core.cpp`: config parsing, signature scanning, the player count, the steam_ban whitelist, team limits and the voice limits), then the plugin, then checks that every symbol the plugin imports exists in a library CS2 loads (a plugin with a missing one builds fine but fails at `meta load`). The result lands in `dist/addons`. Dependencies are pinned to exact commits in `build-dependencies.json`.
 
 ## After a CS2 update
 

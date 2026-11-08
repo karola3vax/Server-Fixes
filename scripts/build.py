@@ -28,6 +28,31 @@ def gate_tests(build: Path) -> None:
   run(str(binary))
 
 
+def symbols(*args: str) -> set[str]:
+  """Dynamic symbol names; weak undefined ones (w, v: the loader allows them to stay unresolved) are left out."""
+  output = subprocess.run(["nm", "-D", *args], check=True, capture_output=True, text=True).stdout
+  names = set()
+  for line in output.splitlines():
+    parts = line.split()
+    if len(parts) >= 2 and parts[-2] not in ("w", "v"):
+      names.add(parts[-1])
+  return names
+
+
+def check_symbols(binary: Path, sdk_libs: Path) -> None:
+  """Every symbol the plugin imports must come from the C/C++ runtime (versioned) or a library CS2 already loads.
+
+  A link succeeds with symbols nobody defines; the server then refuses the plugin at `meta load`
+  ("undefined symbol"), as CEntityKeyValues::GetKeyValue did once. This stops that at build time.
+  """
+  imported = {name for name in symbols("--undefined-only", str(binary)) if "@" not in name}
+  provided = symbols("--defined-only", str(sdk_libs / "libtier0.so"), str(sdk_libs / "libsteam_api.so"))
+  missing = sorted(imported - provided)
+  if missing:
+    raise SystemExit("symbols nothing provides (add the SDK source that defines them): " + ", ".join(missing))
+  print(f"symbols: {len(imported)} imports, all provided by libtier0 / libsteam_api")
+
+
 def main() -> None:
   parser = argparse.ArgumentParser()
   parser.add_argument("--debug", action="store_true")
@@ -58,6 +83,7 @@ def main() -> None:
   binary = build / "server_fixes" / "linux-x86_64" / "server_fixes.so"
   if not binary.is_file() or binary.stat().st_size == 0:
     raise SystemExit(f"plugin binary was not produced: {binary}")
+  check_symbols(binary, dependencies / "hl2sdk-cs2" / "lib" / "linux64")
   # Release layout: copy dist/addons into game/csgo/addons. Metamod adds the extension.
   stage = ROOT / "dist" / "addons"
   (stage / "server_fixes" / "bin").mkdir(parents=True, exist_ok=True)

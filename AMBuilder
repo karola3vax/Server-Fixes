@@ -47,12 +47,16 @@ plugin.sources += [os.path.join(root, 'src', path) for path in [
   'plugin.cpp', 'module.cpp',
   'core/config.cpp', 'core/pattern.cpp', 'core/rules.cpp',
   'fixes/players.cpp', 'fixes/slow_animation.cpp', 'fixes/crashes.cpp', 'fixes/game.cpp',
-  'fixes/network.cpp', 'fixes/steam_ban.cpp',
+  'fixes/network.cpp', 'fixes/steam_ban.cpp', 'fixes/entities.cpp',
+  'fixes/rampbug.cpp',
 ]]
 plugin.sources += [
   os.path.join(sdk['path'], 'tier0_perproject', 'convar.cpp'),
   os.path.join(sdk['path'], 'entity2', 'entitysystem.cpp'),
   os.path.join(sdk['path'], 'entity2', 'entityidentity.cpp'),
+  # CEntityKeyValues (abstract_entity reads an entity's classname) and the KeyValues3 behind it.
+  os.path.join(sdk['path'], 'entity2', 'entitykeyvalues.cpp'),
+  os.path.join(sdk['path'], 'tier0_perproject', 'keyvalues3.cpp'),
   os.path.join(sdk['path'], 'public', 'tier0', 'memoverride.cpp'),
   # Metamod resolves the plugin factory with dlsym; pull the SDK's interfaces in explicitly.
   os.path.join(sdk['path'], 'interfaces', 'interfaces.cpp'),

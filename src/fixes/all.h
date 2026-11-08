@@ -20,11 +20,15 @@ std::unique_ptr<Fix> MakeSvCheats();
 std::unique_ptr<Fix> MakeVoiceFlood();
 std::unique_ptr<Fix> MakeDemoRecord();
 std::unique_ptr<Fix> MakeHammerId();
+std::unique_ptr<Fix> MakeAbstractEntity();
+std::unique_ptr<Fix> MakeWaterJump();
+std::unique_ptr<Fix> MakeRampbug();
 
 // The names server_fixes.cfg knows, in load order; CreateFixes() follows the same order.
 inline const char *const kFixNames[] = {
 	"slow_animation", "beam_crash", "input_activator_crash", "team_limit", "server_list_players",
-	"steam_ban", "sv_cheats", "voice_flood", "demo_record", "hammer_id",
+	"steam_ban", "sv_cheats", "voice_flood", "demo_record", "hammer_id", "abstract_entity", "water_jump",
+	"rampbug",
 };
 
 inline bool IsFixName(const std::string &name)
@@ -48,6 +52,9 @@ inline std::vector<std::unique_ptr<Fix>> CreateFixes()
 	fixes.push_back(MakeVoiceFlood());
 	fixes.push_back(MakeDemoRecord());
 	fixes.push_back(MakeHammerId());
+	fixes.push_back(MakeAbstractEntity());
+	fixes.push_back(MakeWaterJump());
+	fixes.push_back(MakeRampbug());
 	return fixes;
 }
 
