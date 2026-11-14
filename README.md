@@ -43,7 +43,7 @@ Two server console (and rcon) commands; a player who types them is refused:
 
 A new `server_fixes.so` is not picked up by `server_fixes_reload`, because the old copy is still open when the load runs and Linux hands it back. Use `meta unload <id>`, wait a second, then `meta load addons/server_fixes/bin/server_fixes`, or restart.
 
-Metamod 2.0 (build 1483 and current master) only closes a plugin library once every hook it ever created is removed, and its `Unloader` erases from that set while it walks it. A plugin that removes and adds hooks while it runs can be left open for good, and then the next `meta load` runs the old code. That is why `server_fixes_reload` goes through Metamod instead of rebuilding the hooks in place.
+Metamod 2.0 before build 1490 only closes a plugin library once every hook it ever created is removed, and its `Unloader` erased from that set while it walked it. A plugin that removes and adds hooks while it runs could be left open for good, and then the next `meta load` ran the old code. Build 1490 fixes the `Unloader` part; `server_fixes_reload` still goes through Metamod instead of rebuilding the hooks in place, so it works on every build.
 
 ## Build
 
@@ -51,7 +51,7 @@ Metamod 2.0 (build 1483 and current master) only closes a plugin library once ev
 powershell.exe -ExecutionPolicy Bypass -File scripts/build-steamrt3.ps1
 ```
 
-The build runs in Docker with Valve's SteamRT3 image, so the plugin runs on the same glibc as CS2. It first builds and runs the gate tests (`tests/test_core.cpp`: config parsing, signature scanning, the player count, the steam_ban whitelist, team limits, the voice limits and the RTTI vtable finder), then the plugin, then checks that every symbol the plugin imports exists in a library CS2 loads (a plugin with a missing one builds fine but fails at `meta load`). The result lands in `dist/addons`. Dependencies are pinned to exact commits in `build-dependencies.json`.
+The build runs in Valve's Steam Runtime 3 "sniper" SDK, so the plugin runs on the same glibc as CS2. The script uses a WSL copy of that SDK (the `cs2-build` distro); without it, the same build runs in Valve's Docker image: `docker run --rm -v "$PWD:/work" -w /work <steamrt3_image from build-dependencies.json> bash scripts/build-linux.sh`. It first builds and runs the gate tests (`tests/test_core.cpp`: config parsing, signature scanning, the player count, the steam_ban whitelist, team limits, the voice limits and the RTTI vtable finder), then the plugin, then checks that every symbol the plugin imports exists in a library CS2 loads (a plugin with a missing one builds fine but fails at `meta load`). The result lands in `dist/addons`. Dependencies are pinned to exact commits in `build-dependencies.json`.
 
 ## After a CS2 update
 
