@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.1 (2026-11-14)
+
+- Built against Metamod:Source 2.0.0 build 1490 and the current s2sdk.
+- Checked on CS2 build 2000943: all 12 signatures are found.
+- README: Metamod build 1490 fixes the `Unloader` bug described there. `server_fixes_reload` still goes through a Metamod unload and load, so it works on every build.
+
 ## 1.0.0 (2026-11-08)
 
 First release. Replaces GameFixes_mm; run one or the other, not both.
