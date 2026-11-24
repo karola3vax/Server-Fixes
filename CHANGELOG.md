@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.2 (2026-11-24)
+
+- Fixes server crashes on the CS2 update of November 23, 2026 (build 2000950). 1.0.1 does not work on this build.
+- Nothing else changes.
+
 ## 1.0.1 (2026-11-14)
 
 - Built against Metamod:Source 2.0.0 build 1490 and the current s2sdk.
